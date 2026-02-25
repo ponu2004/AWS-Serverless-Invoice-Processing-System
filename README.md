@@ -28,7 +28,7 @@ Users can log in, upload invoices, and process them automatically in the cloud.
 
 ---
 
-## 👩‍💻 Author
+##  Author
 
 **Prajakta Sangle**  
 Cloud & DevOps Learner ☁️
