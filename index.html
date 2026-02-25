@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Invoice Processing App</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 50px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Invoice Processing System</h1>
+
+<button onclick="login()">Login</button>
+
+<br><br>
+
+<input type="file" id="fileInput">
+<button onclick="uploadFile()">Upload Invoice</button>
+
+<p id="status">Status: Not connected</p>
+
+<!-- AWS SDK -->
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.1481.0.min.js"></script>
+
+<script>
+
+// =============================
+// 🔹 CONFIGURATION
+// =============================
+
+const cognitoDomain = "https://ap-south-1s6ljqlqjp.auth.ap-south-1.amazoncognito.com";
+const clientId = "1s43sg7s9riogrkfq0o948k7f8";
+const redirectUri = "https://staging.d3mesf9lmfo3rw.amplifyapp.com";
+
+const region = "ap-south-1";
+const identityPoolId = "ap-south-1:09024afb-2a98-4280-9012-f4ff2267cd7e"; // <-- your identity pool id
+const userPoolId = "ap-south-1_s6lJQlqJP"; // <-- your user pool id
+const bucketName = "vbuckettttqq"; // <-- your bucket name
+
+
+// =============================
+// 🔹 LOGIN FUNCTION
+// =============================
+
+function login() {
+  const url =
+    cognitoDomain +
+    "/login?client_id=" +
+    clientId +
+    "&response_type=token" +
+    "&scope=openid+email+phone&redirect_uri=" +
+    redirectUri;
+
+  window.location.href = url;
+}
+
+
+// =============================
+// 🔹 GET ID TOKEN FROM URL
+// =============================
+
+function getIdToken() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  return params.get("id_token");
+}
+
+
+// =============================
+// 🔹 UPLOAD FUNCTION
+// =============================
+
+function uploadFile() {
+
+  const idToken = getIdToken();
+
+  if (!idToken) {
+    alert("Please login first!");
+    return;
+  }
+
+  const fileInput = document.getElementById("fileInput");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Please select a file first");
+    return;
+  }
+
+  document.getElementById("status").innerText = "Getting credentials...";
+
+  AWS.config.region = region;
+
+  AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: identityPoolId,
+    Logins: {
+      [`cognito-idp.${region}.amazonaws.com/${userPoolId}`]: idToken
+    }
+  });
+
+  // Get temporary credentials
+  AWS.config.credentials.get(function (err) {
+
+    if (err) {
+      console.error("Credential error:", err);
+      alert("Credential Error: " + err.message);
+      document.getElementById("status").innerText = "Credential Failed ❌";
+      return;
+    }
+
+    console.log("Credentials obtained ✅");
+
+    const s3 = new AWS.S3({
+      apiVersion: "2006-03-01",
+      params: { Bucket: bucketName }
+    });
+
+    const params = {
+      Key: "invoices/" + Date.now() + "_" + file.name,
+      Body: file,
+      ContentType: file.type
+    };
+
+    document.getElementById("status").innerText = "Uploading...";
+
+    s3.upload(params, function (err, data) {
+
+      if (err) {
+        console.error("Upload error:", err);
+        alert("Upload Error: " + err.message);
+        document.getElementById("status").innerText = "Upload Failed ❌";
+      } else {
+        console.log("File uploaded:", data.Location);
+        document.getElementById("status").innerText = "Upload Success ✅";
+      }
+
+    });
+
+  });
+}
+
+</script>
+
+</body>
+</html>
